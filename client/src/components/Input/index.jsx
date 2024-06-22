@@ -6,7 +6,7 @@ const InputComp = ({
     type = 'text',
     className = '',
     placeholder = '',
-    isRequired = false,
+    isRequired = true,
 
     value = '',
     onChange = () => { },
