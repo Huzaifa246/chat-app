@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import InputComp from '../../components/Input'
 import ButtonComp from '../../components/Button'
+import { useNavigate } from 'react-router-dom'
 
 const Form = ({
     isSignInPage = true,
@@ -11,9 +12,10 @@ const Form = ({
         password: '',
     })
 
-    console.log(data, 'data')
+    const navigate = useNavigate();
     return (
         <>
+        <div className="bg-[#edf4ff] h-screen flex justify-center items-center">
             <div className='bg-white w-[400px] h-[90%] shadow-lg rounded-lg flex flex-col justify-center items-center'>
                 <div className='text-4xl font-bold'>
                     Welcome {isSignInPage ? '' : 'Back'}
@@ -48,9 +50,12 @@ const Form = ({
 
                 </form>
                 <div className='text-sm'>{isSignInPage ? "Already have an account? " : "Didn't have acccount "}
-                    <span className='text-primary cursor-pointer underline'>
+                    <span className='text-primary cursor-pointer underline'
+                    onClick={() => navigate(`/users/${isSignInPage ? 'sign_in' : 'sign_up'}`)}
+                    >
                         {isSignInPage ? "Sign In" : "Sign Up"}
                     </span></div>
+            </div>
             </div>
         </>
     )

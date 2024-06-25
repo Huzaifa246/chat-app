@@ -5,6 +5,7 @@ const InputComp = ({
     name = '',
     type = 'text',
     className = '',
+    inputClassName = '',
     placeholder = '',
     isRequired = true,
 
@@ -12,7 +13,7 @@ const InputComp = ({
     onChange = () => { },
 }) => {
     return (
-        <div className='w-1/2 mb-2'>
+        <div className={`w-1/2 ${className} mb-2`}>
             <label for={name} className='block text-sm font-medium text-gray-900 dark:text-gray-300'>
                 {label}
             </label>
