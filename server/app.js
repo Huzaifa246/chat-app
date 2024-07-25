@@ -6,6 +6,8 @@ require('./db/connection'); // connection to database
 
 // import files
 const Users = require('./models/Users');
+const Conversations = require('./models/Conversation');
+const Messages = require('./models/Messages');
 
 //App Use
 const app = express();
@@ -69,7 +71,7 @@ app.post('/api/login', async (req, res) => {
 
         console.log(payload, 'payload')
         const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "JWT_SECRET_KEY";
-        
+
         jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: '84600' }, async (err, token) => {
             if (err) {
                 return res.status(500).send('Error generating token');
@@ -84,6 +86,36 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.post('/api/conversation', async (req, res) => {
+    try {
+        const { senderId, recieverId } = req.body;
+        const newConversation = new Conversations({ members: [senderId, recieverId] });
+        await newConversation.save();
+        res.status(200).send({ message: 'Successfully created conversation' });
+    } catch (err) {
+        res.status(500).send({ message: 'Error creating conversation' });
+    }
+});
+// get the conversation
+app.get('/api/conversation/:userId', async (req, res) => {
+    try{
+        const userId = req.params.userId;
+        //Conversation model me check kare gy ID where $in = include
+        const conversations = await Conversations.find({ members: { $in: [userId]}})
+
+        //Now handle USER DATA(USER list)
+        const conversationUserData =  Promise.all(conversations.map(async(conversation) => {
+            const receiverID = conversation.members.find(member => member != userId);
+            const userUniqueData = await Users.findById(receiverID)
+            return { data: { email: userUniqueData.email, fullName : userUniqueData.fullName}, conversationId: conversation._id}
+        }))
+        console.log('conversationUserData', conversationUserData)
+        res.status(200).json(await conversationUserData);
+    }
+    catch (err) {
+        res.status(500).json(err, 'error at conversation');
+    }
+})
 
 app.listen(port, () => {
     console.log(port, "Server is running on port 8000");
