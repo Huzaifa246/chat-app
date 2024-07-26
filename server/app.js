@@ -88,8 +88,8 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/conversation', async (req, res) => {
     try {
-        const { senderId, recieverId } = req.body;
-        const newConversation = new Conversations({ members: [senderId, recieverId] });
+        const { senderId, receiverId } = req.body;
+        const newConversation = new Conversations({ members: [senderId, receiverId] });
         await newConversation.save();
         res.status(200).send({ message: 'Successfully created conversation' });
     } catch (err) {
@@ -98,16 +98,16 @@ app.post('/api/conversation', async (req, res) => {
 });
 // get the conversation
 app.get('/api/conversation/:userId', async (req, res) => {
-    try{
+    try {
         const userId = req.params.userId;
         //Conversation model me check kare gy ID where $in = include
-        const conversations = await Conversations.find({ members: { $in: [userId]}})
+        const conversations = await Conversations.find({ members: { $in: [userId] } })
 
         //Now handle USER DATA(USER list)
-        const conversationUserData =  Promise.all(conversations.map(async(conversation) => {
+        const conversationUserData = Promise.all(conversations.map(async (conversation) => {
             const receiverID = conversation.members.find(member => member != userId);
             const userUniqueData = await Users.findById(receiverID)
-            return { data: { email: userUniqueData.email, fullName : userUniqueData.fullName}, conversationId: conversation._id}
+            return { data: { email: userUniqueData.email, fullName: userUniqueData.fullName }, conversationId: conversation._id }
         }))
         console.log('conversationUserData', conversationUserData)
         res.status(200).json(await conversationUserData);
@@ -117,6 +117,79 @@ app.get('/api/conversation/:userId', async (req, res) => {
     }
 })
 
+//messages
+app.post('/api/message', async (req, res) => {
+    try {
+        const { conversationId, senderId, message, receiverId = '' } = req.body;
+        if (!senderId || !message) return res.status(400).send('Please fill in required information');
+        if (!conversationId && receiverId){
+            const newConversation = new Conversations({ members: [senderId , receiverId] });
+            await newConversation.save();
+            const newMessage = new Messages({ conversationId: newConversation._id, senderId, message });
+            await newMessage.save();
+            return res.status(200).send('Message sent successfully');
+        }
+        else{
+            return res.status(400).send('Please fill in all required fields');
+        }
+        const newMessage = new Messages({ conversationId, senderId, message });
+        await newMessage.save();
+
+        res.status(200).send("Message Sent Successfully");
+    }
+    catch (err) {
+        console.log(err, "Error at message")
+        return res.status(500).send("Error at sending message");
+    }
+})
+
+app.get('/api/message/:conversationId', async (req, res) => {
+    try {
+        const conversationId = req.params.conversationId;
+        // Check if conversation nahi howe to create empty array
+        if (!conversationId) return res.status(200).json([]);
+
+        const messages = await Messages.find({ conversationId });
+
+        //IF i Want detailed messages data with user name and email we will use below code
+        const messageUserData = Promise.all(messages.map(async (message) => {
+            const user = await Users.findById(message.senderId);
+            return {
+                user: {
+                    fullName: user.fullName,
+                    email: user.email,
+                },
+                message: message.message
+            }
+        }))
+        res.status(200).json(await messageUserData);
+    }
+    catch (err) {
+        console.log('Error ', err )
+        res.status(500).json(err, 'error');
+    }
+})
+
+app.get('/api/users', async (req, res) => {
+    try {
+        const allUsers = await Users.find();
+
+        const usersData = Promise.all(allUsers?.map(user =>{
+            return {
+                user:
+                {
+                    fullName: user.fullName,
+                    email: user.email
+                },
+                userId: user._id
+            }
+        }))
+        res.status(200).json(await usersData);
+    }
+    catch (err) {
+        return res.status(500).json(err, 'error');
+    }
+})
 app.listen(port, () => {
     console.log(port, "Server is running on port 8000");
 })
