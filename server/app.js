@@ -2,6 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
 require('./db/connection'); // connection to database
 
 // import files
@@ -13,6 +14,7 @@ const Messages = require('./models/Messages');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors());
 
 const port = process.env.PORT || 8000;
 
@@ -24,23 +26,23 @@ app.post('/api/register', async (req, res) => {
     try {
         const { fullName, email, password } = req.body;
         if (!fullName || !email || !password) {
-            return res.status(400).send('Please fill the required fields');
+            return res.status(400).json({ message: 'Please fill required fields' });
         }
         else {
             const isAlreadyRegistered = await Users.findOne({ email });
             if (isAlreadyRegistered) {
-                return res.status(400).send('User already registered');
+                return res.status(400).json({ message: 'User already registered' });
             }
             const user = new Users({ fullName, email });
             const hashedPassword = await bcrypt.hash(password, 10);
             user.set('password', hashedPassword);
 
             await user.save();
-            return res.status(200).send('User registered successfully');
+            return res.status(200).json({ message: 'User registered successfully' });
         }
     }
     catch (err) {
-        console.log(err);
+        res.status(500).json({ message: 'An error occurred during registration' });
     }
 })
 
@@ -97,15 +99,18 @@ app.post('/api/conversation', async (req, res) => {
     }
 });
 // get the conversation
-app.get('/api/conversation/:userId', async (req, res) => {
+app.get('/api/conversations/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
+        console.log('Received request for userId:', userId);
         //Conversation model me check kare gy ID where $in = include
         const conversations = await Conversations.find({ members: { $in: [userId] } })
+        console.log('Found conversations:', conversations);
 
         //Now handle USER DATA(USER list)
         const conversationUserData = Promise.all(conversations.map(async (conversation) => {
-            const receiverID = conversation.members.find(member => member != userId);
+            const receiverID = conversation.members.find(member => member !== userId);
+            console.log('Receiver ID:', receiverID);
             const userUniqueData = await Users.findById(receiverID)
             return { data: { email: userUniqueData.email, fullName: userUniqueData.fullName }, conversationId: conversation._id }
         }))
@@ -129,7 +134,7 @@ app.post('/api/message', async (req, res) => {
             await newMessage.save();
             return res.status(200).send('Message sent successfully');
         }
-        else{
+        else if(!conversationId && !receiverId){
             return res.status(400).send('Please fill in all required fields');
         }
         const newMessage = new Messages({ conversationId, senderId, message });

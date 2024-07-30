@@ -1,27 +1,27 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Avator from "../../assets/avator.svg"
 import phone from "../../assets/phone.svg"
 import send from "../../assets/send.svg"
 import plus from "../../assets/plus.svg"
 import InputComp from './../../components/Input/index';
+import { useState } from 'react'
 const Dashboard = () => {
-    const contacts = [
-        {
-            name: "Huzaifa",
-            status: "active",
-            img: Avator
-        },
-        {
-            name: "Rehman",
-            status: "Inactive",
-            img: Avator
-        },
-        {
-            name: "Jo Smith",
-            status: "active",
-            img: Avator
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
+    const [conversation, setConversation] = useState([])
+
+    useEffect(() => {
+        const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
+        const fetchConversations = async () => {
+            const response = await fetch(`http://localhost:8000/api/conversations/${loggedInUser?._id}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            const respData = await response.json()
+            setConversation(respData)
         }
-    ]
+        fetchConversations()
+    }, [])
+
     return (
         <>
             <div className='w-screen flex'>
@@ -31,7 +31,7 @@ const Dashboard = () => {
                             <img src={Avator} alt="Profile" width={50} height={70} />
                         </div>
                         <div className='ml-4'>
-                            <h3 className='text-2xl'> Chat App </h3>
+                            <h3 className='text-2xl'> {user?.fullName} </h3>
                             <p className='text-xl font-light'>
                                 My Account
                             </p>
@@ -43,25 +43,24 @@ const Dashboard = () => {
                             Messages
                         </div>
                         <div>
-                            {
-                                contacts?.map(({ name, status, img }) => {
-                                    return (
-                                        <>
-                                            <div className='flex items-center py-4 border-b border-b-gray-300'>
-                                                <div className='flex cursor-pointer'>
-                                                    <img src={img} alt="Profile" width={20} height={40} />
-                                                    <div className='ml-3'>
-                                                        <h3 className='text-lg font-semibold'> {name} </h3>
-                                                        <p className='text-sm font-light text-gray-400'>
-                                                            {status}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                            {!conversation?.length > 0 ? (
+                                conversation.map(({ conversationId, data }) => (
+                                    <div key={conversationId} className='flex items-center py-4 border-b border-b-gray-300'>
+                                        <div className='flex cursor-pointer'>
+                                            <img src={Avator} alt="Profile" width={20} height={40} />
+                                            <div className='ml-3'>
+                                                <h3 className='text-lg font-semibold'>{data.fullName}</h3>
+                                                <p className='text-sm font-light text-gray-400'>{data.email}</p>
                                             </div>
-                                        </>
-                                    )
-                                })
-                            }
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className='flex items-center justify-center h-[400px]'>
+                                    <p className='text-center text-lg font-semibold'>No Data Found</p>
+                                </div>
+                            )}
+
                         </div>
                     </div>
 
@@ -92,9 +91,9 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <div className='p-10 w-[90%] flex'>
-                        <InputComp placeholder='Type your message'className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none'/>
-                        <img src={send} alt="send" width={25} className='cursor-pointer ml-4'/>
-                        <img src={plus} alt="plus" width={25} className='cursor-pointer ml-2'/>
+                        <InputComp placeholder='Type your message' className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
+                        <img src={send} alt="send" width={25} className='cursor-pointer ml-4' />
+                        <img src={plus} alt="plus" width={25} className='cursor-pointer ml-2' />
                     </div>
                 </div>
                 <div className='w-[25%] h-screen bg-light'></div>
