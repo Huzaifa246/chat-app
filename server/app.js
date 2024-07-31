@@ -19,9 +19,6 @@ app.use(cors());
 const port = process.env.PORT || 8000;
 
 // routes
-app.get("/", (req, res) => {
-  res.send("Hello World");
-});
 app.post("/api/register", async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
@@ -117,13 +114,13 @@ app.get("/api/conversations/:userId", async (req, res) => {
     //Now handle USER DATA(USER list)
     const conversationUserData = Promise.all(
       conversations.map(async (conversation) => {
-        const receiverID = conversation.members.find(
+        const receiverId = conversation.members.find(
           (member) => member !== userId
         );
-        console.log("Receiver ID:", receiverID);
-        const userUniqueData = await Users.findById(receiverID);
+        const userUniqueData = await Users.findById(receiverId);
         return {
           data: {
+            receiverId: userUniqueData._id,
             email: userUniqueData.email,
             fullName: userUniqueData.fullName,
           },
@@ -131,7 +128,7 @@ app.get("/api/conversations/:userId", async (req, res) => {
         };
       })
     );
-    console.log("conversationUserData", conversationUserData);
+
     res.status(200).json(await conversationUserData);
   } catch (err) {
     res.status(500).json(err, "error at conversation");
@@ -174,9 +171,7 @@ app.get("/api/message/:conversationId", async (req, res) => {
     const conversationId = req.params.conversationId;
     // Check if conversation nahi howe to create empty array
     if (!conversationId) return res.status(200).json([]);
-
     const messages = await Messages.find({ conversationId });
-
     //IF i Want detailed messages data with user name and email we will use below code
     const messageUserData = Promise.all(
       messages.map(async (message) => {

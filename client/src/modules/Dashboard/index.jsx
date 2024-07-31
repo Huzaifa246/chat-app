@@ -9,7 +9,7 @@ const Dashboard = () => {
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
     const [conversation, setConversation] = useState([])
     const [getMessages, setGetMessages] = useState({})
-    const [messages, setMessages] = useState({})
+    const [message, setMessage] = useState({})
 
     const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
     useEffect(() => {
@@ -23,35 +23,33 @@ const Dashboard = () => {
         }
         fetchConversations()
     }, [])
-    useEffect(() => {
-        const fetchMessages = async (conversationId, user) => {
-            const response = await fetch(`http://localhost:8000/api/message/${conversationId}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            })
-            const respData = await response.json()
-            setGetMessages({ messages: respData, receiver: user })
-        }
-        fetchMessages()
-    }, [])
-
+    const fetchMessages = async (conversationId, user) => {
+        const response = await fetch(`http://localhost:8000/api/message/${conversationId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        })
+        const respData = await response.json()
+        console.log(respData, "RSP")
+        setGetMessages({ messages: respData, receiver: user, conversationId })
+    }
     const sendMessage = async (e) => {
-        e.preventDefault()
         const response = await fetch('http://localhost:8000/api/message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                conversationId: getMessages.receiver._id,
-                senderId: user._id,
+                conversationId: getMessages?.conversationId,
+                senderId: user?._id,
                 message,
-                receiverId: getMessages.receiver._id
+                receiverId: getMessages?.receiver?.receiverId
             }),
         })
+        console.log(response, "response")
         const respData = await response.json()
         console.log(respData, "respData")
-        setMessages({ messages: respData, receiver: user })
+        setMessage(respData)
     }
 
+    console.log(getMessages, "get mes")
 
     return (
         <>
@@ -74,14 +72,14 @@ const Dashboard = () => {
                             Messages
                         </div>
                         <div>
-                            {!conversation?.length > 0 ? (
+                            {conversation?.length > 0 ? (
                                 conversation.map(({ conversationId, data }) => (
                                     <div key={conversationId} className='flex items-center py-4 border-b border-b-gray-300'>
-                                        <div className='flex cursor-pointer' onClick={() => fetchMessages(conversationId)}>
+                                        <div className='flex cursor-pointer' onClick={() => fetchMessages(conversationId, user)}>
                                             <img src={Avator} alt="Profile" width={20} height={40} />
                                             <div className='ml-3'>
-                                                <h3 className='text-lg font-semibold'>{data.fullName}</h3>
-                                                <p className='text-sm font-light text-gray-400'>{data.email}</p>
+                                                <h3 className='text-lg font-semibold'>{data?.fullName}</h3>
+                                                <p className='text-sm font-light text-gray-400'>{data?.email}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -116,10 +114,10 @@ const Dashboard = () => {
                         <div className='p-10'>
                             {
                                 getMessages?.messages?.length > 0 ?
-                                    getMessages?.messages.map(({ sender, message }) => (
-                                        <div key={sender} className='flex'>
+                                    getMessages?.messages.map(({ message, user : {id} = {} }) => (
+                                        <div key={id} className='flex'>
                                             <div className={`max-w-[42%] rounded-b-xl p-4 
-                                                ${id === user?.id ? 'bg-primary rounded-tr-xl ml-auto' : 'bg-secondary'}`}>
+                                                ${id === user?._id ? 'bg-primary rounded-tr-xl ml-auto' : 'bg-secondary'}`}>
                                                 <p className='text-white'>{message}</p>
                                             </div>
                                         </div>
@@ -129,24 +127,17 @@ const Dashboard = () => {
                                         </div>
                                     )
                             }
-                            {/* <div>
-                                <div className='bg-secondary max-w-[42%] rounded-b-xl rounded-tr-xl p-4 mt-5'>
-                                    <p className='text-white'>Lorem ipsum dolor sit amet consectetur adipisicing elit. </p>
-                                </div>
-                                <div className='bg-primary max-w-[42%] rounded-b-xl rounded-tl-xl p-4 mt-5 ml-auto'>
-                                    <p className='text-white'>Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime quos adipisci, quis voluptatibus totam!</p>
-                                </div>
-                            </div> */}
                         </div>
                     </div>
-                    {messages?.receiver?.fullName &&
+                    {getMessages?.receiver?.fullName &&
                         <div className='p-10 w-[90%] flex'>
                             <InputComp placeholder='Type your message'
-                                value='message' onChange={(e) => setMessages(e.target.value)}
+                                value={message} onChange={(e) => setMessage(e.target.value)}
                                 className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
-                            <img src={send} alt="send" width={25} className={`cursor-pointer ml-4 ${!messages ? 'pointer-events-none' : 'text-green-500'}`}
+                            <img src={send} alt="send" width={25} 
+                            className={`cursor-pointer ml-4 ${!message ? 'pointer-events-none' : 'text-green-500'}`}
                                 onClick={() => sendMessage()} />
-                            <img src={plus} alt="plus" width={25} className={`cursor-pointer ml-2 ${!messages ? 'pointer-events-none' : 'text-green-500'}`} />
+                            <img src={plus} alt="plus" width={25} className={`cursor-pointer ml-2 ${!message ? 'pointer-events-none' : 'text-green-500'}`} />
                         </div>
                     }
                 </div>
