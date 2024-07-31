@@ -8,9 +8,11 @@ import { useState } from 'react'
 const Dashboard = () => {
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
     const [conversation, setConversation] = useState([])
+    const [getMessages, setGetMessages] = useState({})
+    const [messages, setMessages] = useState({})
 
+    const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
     useEffect(() => {
-        const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
         const fetchConversations = async () => {
             const response = await fetch(`http://localhost:8000/api/conversations/${loggedInUser?._id}`, {
                 method: 'GET',
@@ -21,6 +23,35 @@ const Dashboard = () => {
         }
         fetchConversations()
     }, [])
+    useEffect(() => {
+        const fetchMessages = async (conversationId, user) => {
+            const response = await fetch(`http://localhost:8000/api/message/${conversationId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            const respData = await response.json()
+            setGetMessages({ messages: respData, receiver: user })
+        }
+        fetchMessages()
+    }, [])
+
+    const sendMessage = async (e) => {
+        e.preventDefault()
+        const response = await fetch('http://localhost:8000/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conversationId: getMessages.receiver._id,
+                senderId: user._id,
+                message,
+                receiverId: getMessages.receiver._id
+            }),
+        })
+        const respData = await response.json()
+        console.log(respData, "respData")
+        setMessages({ messages: respData, receiver: user })
+    }
+
 
     return (
         <>
@@ -46,7 +77,7 @@ const Dashboard = () => {
                             {!conversation?.length > 0 ? (
                                 conversation.map(({ conversationId, data }) => (
                                     <div key={conversationId} className='flex items-center py-4 border-b border-b-gray-300'>
-                                        <div className='flex cursor-pointer'>
+                                        <div className='flex cursor-pointer' onClick={() => fetchMessages(conversationId)}>
                                             <img src={Avator} alt="Profile" width={20} height={40} />
                                             <div className='ml-3'>
                                                 <h3 className='text-lg font-semibold'>{data.fullName}</h3>
@@ -66,35 +97,58 @@ const Dashboard = () => {
 
                 </div>
                 <div className='w-[50%] h-screen bg-white flex flex-col items-center'>
-                    <div className="w-[75%] bg-secondary h-[80px] my-10 rounded-full flex items-center px-10 shadow-lg">
-                        <div className='cursor-pointer'>
-                            <img src={Avator} alt="Profile" width={30} height={50} />
+                    {
+                        getMessages?.receiver?.fullName &&
+                        <div className="w-[75%] bg-secondary h-[80px] my-10 rounded-full flex items-center px-10 shadow-lg">
+                            <div className='cursor-pointer'>
+                                <img src={Avator} alt="Profile" width={30} height={50} />
+                            </div>
+                            <div className='ml-5 mr-auto'>
+                                <h3 className='font-semibold text-lg'>{getMessages?.receiver?.fullName}</h3>
+                                <p className='text-sm font-light text-gray-400'>{getMessages?.receiver?.email}</p>
+                            </div>
+                            <div className='cursor-pointer'>
+                                <img src={phone} alt="call" height={20} width={20} />
+                            </div>
                         </div>
-                        <div className='ml-5 mr-auto'>
-                            <h3 className='font-semibold text-lg'>Huzaifa</h3>
-                            <p className='text-sm font-light text-gray-400'>online</p>
-                        </div>
-                        <div className='cursor-pointer'>
-                            <img src={phone} alt="call" height={20} width={20} />
-                        </div>
-                    </div>
+                    }
                     <div className='h-[75%] w-full overflow-scroll border-b shadow-sm'>
                         <div className='p-10'>
-                            <div>
+                            {
+                                getMessages?.messages?.length > 0 ?
+                                    getMessages?.messages.map(({ sender, message }) => (
+                                        <div key={sender} className='flex'>
+                                            <div className={`max-w-[42%] rounded-b-xl p-4 
+                                                ${id === user?.id ? 'bg-primary rounded-tr-xl ml-auto' : 'bg-secondary'}`}>
+                                                <p className='text-white'>{message}</p>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className='flex items-center justify-center h-[400px]'>
+                                            <p className='text-center text-lg font-semibold'>No Messages Or No Conversation Selected</p>
+                                        </div>
+                                    )
+                            }
+                            {/* <div>
                                 <div className='bg-secondary max-w-[42%] rounded-b-xl rounded-tr-xl p-4 mt-5'>
                                     <p className='text-white'>Lorem ipsum dolor sit amet consectetur adipisicing elit. </p>
                                 </div>
                                 <div className='bg-primary max-w-[42%] rounded-b-xl rounded-tl-xl p-4 mt-5 ml-auto'>
                                     <p className='text-white'>Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime quos adipisci, quis voluptatibus totam!</p>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
-                    <div className='p-10 w-[90%] flex'>
-                        <InputComp placeholder='Type your message' className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
-                        <img src={send} alt="send" width={25} className='cursor-pointer ml-4' />
-                        <img src={plus} alt="plus" width={25} className='cursor-pointer ml-2' />
-                    </div>
+                    {messages?.receiver?.fullName &&
+                        <div className='p-10 w-[90%] flex'>
+                            <InputComp placeholder='Type your message'
+                                value='message' onChange={(e) => setMessages(e.target.value)}
+                                className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
+                            <img src={send} alt="send" width={25} className={`cursor-pointer ml-4 ${!messages ? 'pointer-events-none' : 'text-green-500'}`}
+                                onClick={() => sendMessage()} />
+                            <img src={plus} alt="plus" width={25} className={`cursor-pointer ml-2 ${!messages ? 'pointer-events-none' : 'text-green-500'}`} />
+                        </div>
+                    }
                 </div>
                 <div className='w-[25%] h-screen bg-light'></div>
             </div>
