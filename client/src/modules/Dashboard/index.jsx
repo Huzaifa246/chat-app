@@ -5,13 +5,38 @@ import send from "../../assets/send.svg"
 import plus from "../../assets/plus.svg"
 import InputComp from './../../components/Input/index';
 import { useState } from 'react'
+import { io } from 'socket.io-client';
+
 const Dashboard = () => {
+    const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
     const [conversation, setConversation] = useState([])
     const [getMessages, setGetMessages] = useState({})
-    const [message, setMessage] = useState({})
+    const [message, setMessage] = useState([])
+    const [users, setUsers] = useState([])
 
-    const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
+    const [socket, setSocket] = useState(null)
+
+    console.log('getMessages', getMessages)
+
+    useEffect(() => {
+        setSocket(io('http://localhost:8080'))
+    }, [])
+
+    useEffect(() => {
+        socket?.emit('addUser', user?._id)
+        socket?.on('getUsers', users => {
+            console.log('user socket', users)
+        })
+
+        socket?.on('getMessage', data => {
+            setGetMessages(prev =>({
+                ...prev,
+                getMessages: [...prev.getMessages, {user : data?.user, message: data?.message}]
+            }))
+        })
+    }, [socket])
+
     useEffect(() => {
         const fetchConversations = async () => {
             const response = await fetch(`http://localhost:8000/api/conversations/${loggedInUser?._id}`, {
@@ -23,17 +48,35 @@ const Dashboard = () => {
         }
         fetchConversations()
     }, [])
-    const fetchMessages = async (conversationId, user) => {
-        const response = await fetch(`http://localhost:8000/api/message/${conversationId}`, {
+    useEffect(() => {
+        const fetchUsersData = async () => {
+            const response = await fetch(`http://localhost:8000/api/users/${user?._id}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            })
+            const responseData = await response.json()
+            setUsers(responseData)
+        }
+        fetchUsersData()
+    }, [])
+    const fetchMessages = async (conversationId, receiver) => {
+        const response = await fetch(`http://localhost:8000/api/message/${conversationId}?senderId=${user?._id}&&receiverId=${receiver?.receiverId}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
         })
         const respData = await response.json()
-        console.log(respData, "RSP")
-        setGetMessages({ messages: respData, receiver: user, conversationId })
+        setGetMessages({ messages: respData, receiver, conversationId })
     }
     const sendMessage = async (e) => {
-        const response = await fetch('http://localhost:8000/api/message', {
+        setMessage('')
+        socket.emit('sendMessage', {
+            conversationId: getMessages?.conversationId,
+            senderId: user?._id,
+            message,
+            receiverId: getMessages?.receiver?.receiverId
+        })
+
+    const response = await fetch('http://localhost:8000/api/message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -43,13 +86,9 @@ const Dashboard = () => {
                 receiverId: getMessages?.receiver?.receiverId
             }),
         })
-        console.log(response, "response")
         const respData = await response.json()
-        console.log(respData, "respData")
         setMessage(respData)
     }
-
-    console.log(getMessages, "get mes")
 
     return (
         <>
@@ -92,8 +131,8 @@ const Dashboard = () => {
 
                         </div>
                     </div>
-
                 </div>
+                {/* Messages section */}
                 <div className='w-[50%] h-screen bg-white flex flex-col items-center'>
                     {
                         getMessages?.receiver?.fullName &&
@@ -114,7 +153,7 @@ const Dashboard = () => {
                         <div className='p-10'>
                             {
                                 getMessages?.messages?.length > 0 ?
-                                    getMessages?.messages.map(({ message, user : {id} = {} }) => (
+                                    getMessages?.messages.map(({ message, user: { id } = {} }) => (
                                         <div key={id} className='flex'>
                                             <div className={`max-w-[42%] rounded-b-xl p-4 
                                                 ${id === user?._id ? 'bg-primary rounded-tr-xl ml-auto' : 'bg-secondary'}`}>
@@ -134,14 +173,37 @@ const Dashboard = () => {
                             <InputComp placeholder='Type your message'
                                 value={message} onChange={(e) => setMessage(e.target.value)}
                                 className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
-                            <img src={send} alt="send" width={25} 
-                            className={`cursor-pointer ml-4 ${!message ? 'pointer-events-none' : 'text-green-500'}`}
+                            <img src={send} alt="send" width={25}
+                                className={`cursor-pointer ml-4 ${!message ? 'pointer-events-none' : 'text-green-500'}`}
                                 onClick={() => sendMessage()} />
                             <img src={plus} alt="plus" width={25} className={`cursor-pointer ml-2 ${!message ? 'pointer-events-none' : 'text-green-500'}`} />
                         </div>
                     }
                 </div>
-                <div className='w-[25%] h-screen bg-light'></div>
+                <div className='w-[25%] h-screen bg-light'>
+                    <div className='text-primary text-lg text-center py-2'>
+                        People
+                    </div>
+                    <div className='px-3'>
+                        {users?.length > 0 ? (
+                            users.map(({ conversationId, user }) => (
+                                <div key={conversationId} className='flex items-center py-4 border-b border-b-gray-300'>
+                                    <div className='flex cursor-pointer' onClick={() => fetchMessages('new', user)}>
+                                        <img src={Avator} alt="Profile" width={20} height={40} />
+                                        <div className='ml-3'>
+                                            <h3 className='text-lg font-semibold'>{user?.fullName}</h3>
+                                            <p className='text-sm font-light text-gray-400'>{user?.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className='flex items-center justify-center h-[400px]'>
+                                <p className='text-center text-lg font-semibold'>No Data Found</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </>
     )
