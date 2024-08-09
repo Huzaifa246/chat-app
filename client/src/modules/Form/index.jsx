@@ -18,7 +18,7 @@ const Form = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const response = await fetch(`http://localhost:8000/api/${!isSignInPage ? 'login' : 'register'}`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/${!isSignInPage ? 'login' : 'register'}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

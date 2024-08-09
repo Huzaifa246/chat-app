@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from 'react'
 import Avator from "../../assets/avator.svg"
 import phone from "../../assets/phone.svg"
 import send from "../../assets/send.svg"
-import plus from "../../assets/plus.svg"
 import InputComp from './../../components/Input/index';
 import { useState } from 'react'
 import { io } from 'socket.io-client';
+import { useSnackbar } from 'notistack';
+import { useNavigate } from 'react-router-dom'
 
 const Dashboard = () => {
     const loggedInUser = JSON.parse(localStorage.getItem('user:detail'))
@@ -17,9 +18,18 @@ const Dashboard = () => {
 
     const [socket, setSocket] = useState(null)
     const messageRef = useRef(null)
+    const { enqueueSnackbar } = useSnackbar();
+    const navigate = useNavigate();
 
+    const handleLogout = () => {
+        localStorage.removeItem('user:detail');
+        localStorage.removeItem('user:token');
+        setUser(null);
+        enqueueSnackbar('Logout', { variant: 'error' });
+        navigate('/users/sign_in');
+    };
     useEffect(() => {
-        setSocket(io('http://localhost:8080'))
+        setSocket(io(process.env.REACT_APP_SOCKET_URL))
     }, [])
 
     useEffect(() => {
@@ -42,7 +52,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         const fetchConversations = async () => {
-            const response = await fetch(`http://localhost:8000/api/conversations/${loggedInUser?._id}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/conversations/${loggedInUser?._id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
             })
@@ -53,7 +63,7 @@ const Dashboard = () => {
     }, [])
     useEffect(() => {
         const fetchUsersData = async () => {
-            const response = await fetch(`http://localhost:8000/api/users/${user?._id}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/${user?._id}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
             })
@@ -63,7 +73,7 @@ const Dashboard = () => {
         fetchUsersData()
     }, [])
     const fetchMessages = async (conversationId, receiver) => {
-        const response = await fetch(`http://localhost:8000/api/message/${conversationId}?senderId=${user?._id}&&receiverId=${receiver?.receiverId}`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/message/${conversationId}?senderId=${user?._id}&&receiverId=${receiver?.receiverId}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
         })
@@ -80,7 +90,7 @@ const Dashboard = () => {
             receiverId: getMessages?.receiver?.receiverId
         })
 
-        const response = await fetch('http://localhost:8000/api/message', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -91,7 +101,6 @@ const Dashboard = () => {
             }),
         })
         const respData = await response.json()
-        console.log(respData, "respData msg")
         setMessage(respData)
     }
 
@@ -105,9 +114,15 @@ const Dashboard = () => {
                         </div>
                         <div className='ml-4'>
                             <h3 className='text-xl md:text-2xl'> {user?.fullName} </h3>
-                            <p className='text-sm md:text-xl font-light'>
-                                My Account
-                            </p>
+                            <div>
+                                <p className='text-sm md:text-xl font-light'>
+                                    My Account
+                                </p>
+                                <p className='text-sm md:text-xl font-light hover:text-red-600 cursor-pointer'
+                                 onClick={handleLogout}>
+                                    Logout
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <hr />
@@ -133,7 +148,7 @@ const Dashboard = () => {
                                     <p className='text-center text-sm md:text-lg font-semibold'>No Data Found</p>
                                 </div>
                             )}
-    
+
                         </div>
                     </div>
                 </div>
@@ -179,7 +194,6 @@ const Dashboard = () => {
                                 value={message} onChange={(e) => setMessage(e.target.value)}
                                 className='w-full shadow-md bg-secondary bg-light focus:ring-0 outline-none' />
                             <img src={send} alt="send" className={`cursor-pointer ml-2 md:ml-4 ${!message ? 'pointer-events-none' : 'text-green-500'}`} width={20} height={20} onClick={() => sendMessage()} />
-                            <img src={plus} alt="plus" className={`cursor-pointer ml-1 md:ml-2 ${!message ? 'pointer-events-none' : 'text-green-500'}`} width={20} height={20} />
                         </div>
                     }
                 </div>
@@ -210,7 +224,7 @@ const Dashboard = () => {
             </div>
         </>
     );
-    
+
 }
 
 export default Dashboard
