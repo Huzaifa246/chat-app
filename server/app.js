@@ -39,11 +39,21 @@ io.on('connection', socket => {
     senderId, receiverId, conversationId, message
   }) => {
     const socketReceiver = users.find(user => user?.userId === receiverId)
-    const socketSender = users.find(user => user?.userId === receiverId)
+    const socketSender = users.find(user => user?.userId === senderId)
     const user = await Users.findById(senderId)
+    console.log(senderId, 'sender' , receiverId , "reciever")
 
     if (socketReceiver) {
       io?.to(socketReceiver.socketId).to(socketSender?.socketId).emit('getMessage', { // (to) used for private msg and then emit used to send msg
+        senderId,
+        message,
+        conversationId,
+        receiverId,
+        user: { id: user?._id, fullName: user?.fullName, email: user?.email }
+      })
+    }
+    else{
+      io?.to(socketSender?.socketId).emit('getMessage', {
         senderId,
         message,
         conversationId,
@@ -179,8 +189,12 @@ app.get("/api/conversations/:userId", async (req, res) => {
 app.post("/api/message", async (req, res) => {
   try {
     const { conversationId, senderId, message, receiverId = "" } = req.body;
-    if (!senderId || !message)
+    if (!senderId || !message){
       return res.status(400).send("Please fill in required information");
+    }
+
+    let newMessage;
+
     if (conversationId === "new" && receiverId) {
       const newConversation = new Conversations({
         members: [senderId, receiverId],
@@ -190,13 +204,16 @@ app.post("/api/message", async (req, res) => {
         conversationId: newConversation._id,
         senderId,
         message,
+        receiverId
       });
       await newMessage.save();
       return res.status(200).send("Message sent successfully");
     } else if (!conversationId && !receiverId) {
       return res.status(400).send("Please fill in all required fields");
     }
-    const newMessage = new Messages({ conversationId, senderId, message });
+    
+    newMessage = new Messages({ conversationId, senderId, message, receiverId });
+    console.log(newMessage, "New Msg")
     await newMessage.save();
 
     res.status(200).send("Message Sent Successfully");
