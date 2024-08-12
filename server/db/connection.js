@@ -1,5 +1,6 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
-const url = `mongodb+srv://chat_appadmin:chat_appadmin@cluster0.itgppjj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+const url = process.env.MONGO_URL;
 
 mongoose.connect(url, {
     useNewUrlParser: true,

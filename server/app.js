@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const io = require('socket.io')(8080, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
   }
 })
 
@@ -118,8 +118,6 @@ app.post("/api/login", async (req, res) => {
       userId: user.id,
       email: user.email,
     };
-
-    console.log(payload, "payload");
     const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "JWT_SECRET_KEY";
 
     jwt.sign(
